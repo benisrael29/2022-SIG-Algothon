@@ -23,23 +23,50 @@ from skforecast.ForecasterAutoregMultiOutput import ForecasterAutoregMultiOutput
 from skforecast.model_selection import grid_search_forecaster
 from skforecast.model_selection import backtesting_forecaster
 
+from keras.preprocessing.sequence import TimeseriesGenerator
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.layers import LSTM
+
 from joblib import dump, load
 
 # Warnings configuration
 # ==============================================================================
 import warnings
-# warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore')
+# ==============================================================================
+all_data = np.loadtxt("prices.txt", dtype=float)
+print(all_data)
+print(all_data[0][-1])
+
+# ==============================================================================
 nInst=100
 currentPos = np.zeros(nInst)
 
 def getPosition (prcSoFar):
     global currentPos
-    if prcSoFar.shape[1]<5:
-        return  np.zeros(nInst)
-    
+
+    if prcSoFar.shape[1]<180:
+            return np.zeros(nInst)
     for i in range(100):
-        instrumentData = pd.Series(prcSoFar[i])
-        
+        dartum = prcSoFar[i]    
+        n_input = 10
+
+        n_features = 1
+        generator = TimeseriesGenerator(dartum, dartum, length=n_input, batch_size=1)
+
+        model = Sequential()
+        model.add(LSTM(100, activation='relu', input_shape=(n_input, n_features)))
+        model.add(Dense(1))
+        model.compile(optimizer='adam', loss='mse')
+        model.fit(generator,epochs=50, verbose=0)
+        batch = dartum[-n_input:]
+        batch = batch.reshape((1, n_input, n_features))
+        prediction = model.predict(batch)
+        print(prediction)
+        print(all_data[i][len(prcSoFar)-1])
+        print(prediction-all_data[i][len(prcSoFar)-1])
+
     # Build your function body here
 
     return currentPos
